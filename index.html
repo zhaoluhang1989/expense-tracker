@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="简洁高效的个人记账工具，随时随地记录收支">
+    <title>记账本 - 轻松管理财务</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+
+<body>
+    <!-- 主容器 -->
+    <div class="app-container">
+        <!-- 顶部栏 -->
+        <header class="app-header">
+            <h1 class="app-title">记账本</h1>
+            <div class="header-controls">
+                <select id="monthSelector" class="month-selector"></select>
+            </div>
+        </header>
+
+        <!-- 收支概览卡片 -->
+        <div class="overview-card">
+            <div class="overview-item income">
+                <span class="overview-label">收入</span>
+                <span class="overview-amount" id="totalIncome">¥0.00</span>
+            </div>
+            <div class="overview-divider"></div>
+            <div class="overview-item expense">
+                <span class="overview-label">支出</span>
+                <span class="overview-amount" id="totalExpense">¥0.00</span>
+            </div>
+            <div class="overview-divider"></div>
+            <div class="overview-item balance">
+                <span class="overview-label">结余</span>
+                <span class="overview-amount" id="totalBalance">¥0.00</span>
+            </div>
+        </div>
+
+        <!-- 页面内容区 -->
+        <main class="main-content" id="mainContent">
+            <!-- 首页：账单列表 -->
+            <section class="page active" id="homePage">
+                <div class="records-list" id="recordsList">
+                    <div class="empty-state">
+                        <div class="empty-icon">📝</div>
+                        <p>暂无记录，点击下方按钮开始记账</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 统计页 -->
+            <section class="page" id="statsPage">
+                <div class="stats-container">
+                    <div class="chart-card">
+                        <h3 class="chart-title">支出分类</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="expenseChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h3 class="chart-title">收支趋势</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="trendChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="category-breakdown" id="categoryBreakdown"></div>
+                </div>
+            </section>
+
+            <!-- 设置页 -->
+            <section class="page" id="settingsPage">
+                <div class="settings-container">
+                    <div class="settings-group">
+                        <h3 class="settings-title">数据管理</h3>
+                        <button class="settings-btn" id="exportBtn">
+                            <span class="btn-icon">📤</span>
+                            <span>导出数据</span>
+                        </button>
+                        <button class="settings-btn" id="importBtn">
+                            <span class="btn-icon">📥</span>
+                            <span>导入数据</span>
+                        </button>
+                        <input type="file" id="importFile" accept=".json" style="display:none">
+                    </div>
+                    <div class="settings-group">
+                        <h3 class="settings-title">预算设置</h3>
+                        <div class="budget-setting">
+                            <label>月度预算</label>
+                            <input type="number" id="budgetInput" class="budget-input" placeholder="输入预算金额">
+                            <button class="save-budget-btn" id="saveBudgetBtn">保存</button>
+                        </div>
+                        <div class="budget-status" id="budgetStatus"></div>
+                    </div>
+                    <div class="settings-group">
+                        <h3 class="settings-title">分类管理</h3>
+                        <div class="category-tabs">
+                            <button class="cat-tab active" data-type="expense">支出分类</button>
+                            <button class="cat-tab" data-type="income">收入分类</button>
+                        </div>
+                        <div class="category-grid" id="categoryManageGrid"></div>
+                        <button class="add-category-btn" id="addCategoryBtn">+ 添加分类</button>
+                    </div>
+                    <div class="settings-group">
+                        <h3 class="settings-title">关于</h3>
+                        <p class="about-text">记账本 v1.0</p>
+                        <p class="about-text">数据仅存储在本地浏览器中</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- 添加记账按钮 -->
+        <button class="fab" id="addRecordBtn">
+            <span class="fab-icon">+</span>
+        </button>
+
+        <!-- 底部导航 -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" data-page="homePage">
+                <span class="nav-icon">📋</span>
+                <span class="nav-label">账单</span>
+            </button>
+            <button class="nav-item" data-page="statsPage">
+                <span class="nav-icon">📊</span>
+                <span class="nav-label">统计</span>
+            </button>
+            <button class="nav-item" data-page="settingsPage">
+                <span class="nav-icon">⚙️</span>
+                <span class="nav-label">设置</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- 记账弹窗 -->
+    <div class="modal" id="recordModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button class="modal-close" id="closeModal">×</button>
+                <div class="type-switch">
+                    <button class="type-btn active" data-type="expense">支出</button>
+                    <button class="type-btn" data-type="income">收入</button>
+                </div>
+                <button class="modal-save" id="saveRecord">保存</button>
+            </div>
+
+            <!-- 金额显示 -->
+            <div class="amount-display">
+                <span class="currency">¥</span>
+                <span class="amount-value" id="amountDisplay">0</span>
+            </div>
+
+            <!-- 分类选择 -->
+            <div class="category-section">
+                <div class="category-grid" id="categoryGrid"></div>
+            </div>
+
+            <!-- 账户与日期 -->
+            <div class="record-meta">
+                <div class="meta-item">
+                    <label>账户</label>
+                    <select id="accountSelect" class="meta-select"></select>
+                </div>
+                <div class="meta-item">
+                    <label>日期</label>
+                    <input type="date" id="dateInput" class="meta-input">
+                </div>
+            </div>
+
+            <!-- 备注 -->
+            <div class="note-section">
+                <input type="text" id="noteInput" class="note-input" placeholder="添加备注...">
+            </div>
+
+            <!-- 数字键盘 -->
+            <div class="numpad">
+                <button class="numpad-btn" data-value="1">1</button>
+                <button class="numpad-btn" data-value="2">2</button>
+                <button class="numpad-btn" data-value="3">3</button>
+                <button class="numpad-btn" data-value="4">4</button>
+                <button class="numpad-btn" data-value="5">5</button>
+                <button class="numpad-btn" data-value="6">6</button>
+                <button class="numpad-btn" data-value="7">7</button>
+                <button class="numpad-btn" data-value="8">8</button>
+                <button class="numpad-btn" data-value="9">9</button>
+                <button class="numpad-btn" data-value=".">.</button>
+                <button class="numpad-btn" data-value="0">0</button>
+                <button class="numpad-btn backspace" data-value="backspace">⌫</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加分类弹窗 -->
+    <div class="modal" id="categoryModal">
+        <div class="modal-content small">
+            <div class="modal-header">
+                <button class="modal-close" id="closeCategoryModal">×</button>
+                <h3>添加分类</h3>
+                <button class="modal-save" id="saveCategoryBtn">保存</button>
+            </div>
+            <div class="category-form">
+                <div class="form-group">
+                    <label>分类名称</label>
+                    <input type="text" id="newCategoryName" class="form-input" placeholder="输入分类名称">
+                </div>
+                <div class="form-group">
+                    <label>选择图标</label>
+                    <div class="icon-picker" id="iconPicker"></div>
+                </div>
+                <div class="form-group">
+                    <label>分类类型</label>
+                    <select id="newCategoryType" class="form-input">
+                        <option value="expense">支出</option>
+                        <option value="income">收入</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 提示 -->
+    <div class="toast" id="toast"></div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
